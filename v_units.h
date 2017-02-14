@@ -191,6 +191,5 @@ namespace v_units
 	using multiply_t = typename multiply_impl<A, B>::type;
 
 	template<class N, class D>
-	using divide_t = typename multiply_t<N, typename inverse_t<D>>;
+	using divide_t = multiply_t<N, inverse_t<D>>;
 }
->>>>>>> 58fdb9145168877725ff87b04ccd2b0bfdc138aa
