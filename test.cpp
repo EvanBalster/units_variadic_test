@@ -49,8 +49,9 @@ struct printDimensions_impl<Dimension1, Dimensions...>
 template<class... Dimensions>
 void print(const char *label, const dimensions<Dimensions...> &dim)
 {
+	std::cout << label << " => ";
 	printDimensions_impl<Dimensions...>::print();
-	std::cout << label << " => " << std::endl;
+	std::cout << std::endl;
 }
 
 
@@ -63,10 +64,20 @@ int main(int argc, char **argv)
 	typedef dimension<dims::time, std::ratio< 0, 1>>  time_0; // Invalid if used in a unit!
 	typedef dimension<dims::time, std::ratio<-1, 1>> time_n1;
 
-	// Valid unit
-	print("velocity", dimensions<length_1, time_n1>());
+	using dim_velocity = dimensions<length_1, time_n1>;
+	using dim_time     = dimensions<time_1>;
 
-	print("inverse velocity", inverse<dimensions<length_1, time_n1>>());
+	// Valid unit
+	print("velocity", dim_velocity());
+
+	// Inverse
+	print("inverse velocity", inverse<dim_velocity>());
+
+	// Multiply without cancellation
+	print("velocity x velocity", multiply<dim_velocity, dim_velocity>());
+
+	// Multiply with cancellation
+	print("velocity x time", multiply<dim_velocity, dimensions<time_1>>());
 
 #if COMPILE_ERRORS
 	// Invalid unit: dimensions must be ordered with respect to 

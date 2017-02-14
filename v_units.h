@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>
 #include <ratio>
 
 namespace v_dimensions
@@ -90,7 +91,8 @@ namespace v_units
 			"Unit dimensions must have non-zero exponents.");
 	};
 
-	template<class...> struct inverse_impl {};
+
+	template<class> struct inverse_impl {};
 
 	template<class... Dimensions>
 	struct inverse_impl<dimensions<Dimensions...> >
@@ -104,8 +106,74 @@ namespace v_units
 	template<class U> using inverse = typename inverse_impl<U>::type;
 
 
+	// Used in multiply_impl
+	template<class Dimension, class Dimensions> struct dimension_add_impl {};
+
+	template<class Dimension, class... Dimensions>
+	struct dimension_add_impl<Dimension, dimensions<Dimensions...> >
+	{
+		using prepend = dimensions<Dimension, Dimensions...>;
+		//using append  = dimensions<Dimensions..., FirstDimension>;
+	};
+
+	template<class Dimension, class Dimensions>
+	using dimension_prepend = typename dimension_add_impl<Dimension, Dimensions>::prepend;
+
+	//template<class Dimension, class Dimensions>
+	//using dimension_append = dimension_add_impl<Dimension, Dimensions>::append;
+
+
 	/*
-		Multiplication of dimensions (TODO)
+		Dimensions multiplication template.  Breaks down into various cases...
 	*/
-	template<class...> struct multiply_impl {};
+	template<class A, class B, class Enable = void> struct multiply_impl {};
+
+	// A: B is dimensionless; return A.
+	template<class... A_Rest>
+	struct multiply_impl<dimensions<A_Rest...>, dimensions<>, void> { using type = dimensions<A_Rest...>; };
+
+	// B: A is dimensionless; return B (which is not).
+	template<class B1, class... B_Rest>
+	struct multiply_impl<dimensions<>, dimensions<B1, B_Rest...>, void> { using type = dimensions<B1, B_Rest...>; };
+
+	// C: A's first dimension precedes B's
+	template<class A1, class B1, class... A_Rest, class... B_Rest>
+	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
+		typename std::enable_if_t<(A1::DIM_ID < B1::DIM_ID)>>
+	{
+		using type = dimension_prepend<A1,
+			typename multiply_impl<dimensions<A_Rest...>, dimensions<B1, B_Rest...> >::type>;
+	};
+
+	// D: B's first dimension precedes A's
+	template<class A1, class B1, class... A_Rest, class... B_Rest>
+	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
+		typename std::enable_if_t<(B1::DIM_ID < A1::DIM_ID)>>
+	{
+		using type = dimension_prepend<B1,
+			typename multiply_impl<dimensions<A1, A_Rest...>, dimensions<B_Rest...> >::type>;
+	};
+
+	// E: A's first dimension is compatible with B's and they don't cancel out
+	template<class A1, class B1, class... A_Rest, class... B_Rest>
+	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
+		typename std::enable_if_t<(B1::DIM_ID == A1::DIM_ID) &&
+			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num != 0)>>
+	{
+		using type = dimension_prepend<
+			dimension<typename A1::base, std::ratio_add<typename A1::exponent, typename B1::exponent>>,
+			typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type>;
+	};
+
+	// E: A's first dimension is compatible with B's and they cancel out
+	template<class A1, class B1, class... A_Rest, class... B_Rest>
+	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
+		typename std::enable_if_t<(B1::DIM_ID == A1::DIM_ID) &&
+			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num == 0)>>
+	{
+		using type = typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type;
+	};
+
+	template<class A, class B>
+	using multiply = typename multiply_impl<A, B>::type;
 }
