@@ -85,6 +85,9 @@ int main(int argc, char **argv)
 
 	// Invalid unit: time dimension has exponent 0
 	print(dimensions<time_0, length_1>());
+	
+	// Incompatible assignment, simple case
+	dimensions<length_1> m = divide_t<dimensions<length_1>, dimensions<time_1>>();
 #endif
 
 	// Valid unit
@@ -113,6 +116,7 @@ int main(int argc, char **argv)
 	print("   force x time^2  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<2>>>());
 	print("   force x time^3  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<3>>>());
 	print("   force / mass    ", divide_t  <dim_force, dimensions<mass_1>>());
+	
 
 	std::cout << std::endl << "Press enter to terminate." << std::endl;
 	std::cin.ignore(255, '\n');
