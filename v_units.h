@@ -139,7 +139,7 @@ namespace v_units
 	// C: A's first dimension precedes B's
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if_t<(A1::DIM_ID < B1::DIM_ID)>>
+		typename std::enable_if<(A1::DIM_ID < B1::DIM_ID)>::type>
 	{
 		using type = dimension_prepend<A1,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<B1, B_Rest...> >::type>;
@@ -148,7 +148,7 @@ namespace v_units
 	// D: B's first dimension precedes A's
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if_t<(B1::DIM_ID < A1::DIM_ID)>>
+		typename std::enable_if<(B1::DIM_ID < A1::DIM_ID)>::type>
 	{
 		using type = dimension_prepend<B1,
 			typename multiply_impl<dimensions<A1, A_Rest...>, dimensions<B_Rest...> >::type>;
@@ -157,8 +157,8 @@ namespace v_units
 	// E: A's first dimension is compatible with B's and they don't cancel out
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if_t<(B1::DIM_ID == A1::DIM_ID) &&
-			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num != 0)>>
+		typename std::enable_if<(B1::DIM_ID == A1::DIM_ID) &&
+			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num != 0)>::type>
 	{
 		using type = dimension_prepend<
 			dimension<typename A1::base, std::ratio_add<typename A1::exponent, typename B1::exponent>>,
@@ -168,8 +168,8 @@ namespace v_units
 	// E: A's first dimension is compatible with B's and they cancel out
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if_t<(B1::DIM_ID == A1::DIM_ID) &&
-			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num == 0)>>
+		typename std::enable_if<(B1::DIM_ID == A1::DIM_ID) &&
+			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num == 0)>::type>
 	{
 		using type = typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type;
 	};

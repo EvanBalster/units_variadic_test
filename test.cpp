@@ -12,7 +12,7 @@ using namespace v_units;
 template<class Dimension>
 void printDimension()
 {
-	const char *fullName = typeid(Dimension::base).name(), *name = fullName;
+	const char *fullName = typeid(typename Dimension::base).name(), *name = fullName;
 
 	while (*fullName != '\0')
 	{
