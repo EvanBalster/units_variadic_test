@@ -78,6 +78,14 @@ int main(int argc, char **argv)
 	using dim_time     = dimensions<time_1>;
 
 	using dim_force = dimensions<length_1, mass_1, time_n2>;
+	
+#if COMPILE_ERRORS
+	// Invalid unit: dimensions must be ordered with respect to DIM_ID
+	print(dimensions<time_n1, length_1>());
+
+	// Invalid unit: time dimension has exponent 0
+	print(dimensions<time_0, length_1>());
+#endif
 
 	// Valid unit
 	print("           velocity", dim_velocity());
@@ -105,14 +113,6 @@ int main(int argc, char **argv)
 	print("   force x time^2  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<2>>>());
 	print("   force x time^3  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<3>>>());
 	print("   force / mass    ", divide_t  <dim_force, dimensions<mass_1>>());
-
-#if COMPILE_ERRORS
-	// Invalid unit: dimensions must be ordered with respect to 
-	print(dimensions<time_n1, length_1>);
-
-	// Invalid unit: time dimension has exponent 0
-	print(dimensions<time_0, length_1>);
-#endif
 
 	std::cout << std::endl << "Press enter to terminate." << std::endl;
 	std::cin.ignore(255, '\n');
