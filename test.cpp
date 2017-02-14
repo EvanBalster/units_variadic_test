@@ -13,11 +13,13 @@ using namespace v_units;
 template<class Dimension>
 void printDimension()
 {
-	// PRETTY PRINTING HACK, only works where symbols are unmangled
+	// PRETTY PRINTING HACK, NOT RELIABLY PORTABLE
 	const char *fullName = typeid(typename Dimension::base).name(), *name = fullName;
+	bool prevLC = false;
 	while (*fullName != '\0')
 	{
-		if (*fullName == ':') name = fullName + 1;
+		if (*fullName < 'a' || *fullName > 'z') prevLC = false;
+		else if (!prevLC) {name = fullName; prevLC = true;}
 		++fullName;
 	}
 
