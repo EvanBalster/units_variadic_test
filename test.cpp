@@ -1,20 +1,28 @@
 #include <iostream>
 #include <iomanip>
 
-#include "v_units.h"
-
 #define COMPILE_ERRORS 0
+#define PAIR_STYLE 1
+
+#if PAIR_STYLE
+	#include "vp_units.h"
+	using namespace vp_units;
+#else
+	#error "Not supported anymore"
+	#include "v_units.h"
+	using namespace v_units;
+#endif
 
 namespace dims = v_dimensions;
 
-using namespace v_units;
+using std::ratio;
 
 
-template<class Dimension>
+template<class Base, class Exp>
 void printDimension()
 {
 	// PRETTY PRINTING HACK, NOT RELIABLY PORTABLE
-	const char *fullName = typeid(typename Dimension::base).name(), *name = fullName;
+	const char *fullName = typeid(Base).name(), *name = fullName;
 	bool prevLC = false;
 	while (*fullName != '\0')
 	{
@@ -23,8 +31,8 @@ void printDimension()
 		++fullName;
 	}
 
-	std::cout << std::setw(9) << name << '^' << std::setw(2) << Dimension::exponent::num;
-	if (Dimension::exponent::den != 1) std::cout << '/' << Dimension::exponent::den;
+	std::cout << std::setw(9) << name << '^' << std::setw(2) << Exp::num;
+	if (Exp::den != 1) std::cout << '/' << Exp::den;
 	else std::cout << "  ";
 }
 
@@ -36,14 +44,14 @@ struct printDimensions_impl
 	static void print() {}
 };
 
-template<class Dimension1, class... Dimensions>
-struct printDimensions_impl<Dimension1, Dimensions...>
+template<class Base1, class Exp1, class... Dimensions>
+struct printDimensions_impl<Base1, Exp1, Dimensions...>
 {
 	//using type = printDimensions_impl<Dimensions...>::type;
 
 	static void print()
 	{
-		printDimension<Dimension1>();
+		printDimension<Base1, Exp1>();
 		std::cout << " ";
 		printDimensions_impl<Dimensions...>::print();
 	}
@@ -61,33 +69,24 @@ void print(const char *label, const dimensions<Dimensions...> &dim)
 
 int main(int argc, char **argv)
 {
-	typedef dimension<dims::length, std::ratio<1, 1>> length_1;
-	typedef dimension<dims::length, std::ratio<2, 1>> length_2;
+	// Simple dimensions
+	using dim_length = dimensions<dims::length, ratio<1>>;
+	using dim_time   = dimensions<dims::time, ratio<1>>;
+	using dim_mass   = dimensions<dims::mass, ratio<1>>;
 
-	typedef dimension<dims::time, std::ratio< 1, 1>>  time_1;
-	typedef dimension<dims::time, std::ratio< 0, 1>>  time_0; // Invalid if used in a unit!
-	typedef dimension<dims::time, std::ratio<-1, 1>> time_n1;
-	typedef dimension<dims::time, std::ratio<-2, 1>> time_n2;
-
-	typedef dimension<dims::charge,      std::ratio<1, 1>> charge_1;
-	typedef dimension<dims::temperature, std::ratio<1, 1>> temperature_1;
-	typedef dimension<dims::substance,   std::ratio<1, 1>> substance_1;
-	typedef dimension<dims::mass,        std::ratio<1, 1>> mass_1;
-
-	using dim_velocity = dimensions<length_1, time_n1>;
-	using dim_time     = dimensions<time_1>;
-
-	using dim_force = dimensions<length_1, mass_1, time_n2>;
+	// More complicated dimensions
+	using dim_velocity = dimensions<dims::length, ratio<1>, dims::time, ratio<-1>>;
+	using dim_force    = dimensions<dims::length, ratio<1>, dims::mass, ratio<1>, dims::time, ratio<-2>>;
 	
 #if COMPILE_ERRORS
-	// Invalid unit: dimensions must be ordered with respect to DIM_ID
-	print(dimensions<time_n1, length_1>());
+	// Invalid unit: dimensions must be ordered with respect to DIM_ID to avoid redundant types
+	print(dimensions<dims::time, ratio<-1>, dims::length, ratio<1>>());
 
 	// Invalid unit: time dimension has exponent 0
-	print(dimensions<time_0, length_1>());
+	print(dimensions<dims::time, ratio<0>>());
 	
 	// Incompatible assignment, simple case
-	dimensions<length_1> m = divide_t<dimensions<length_1>, dimensions<time_1>>();
+	dim_length m = divide_t<dim_length, dim_time>();
 #endif
 
 	// Valid unit
@@ -100,22 +99,22 @@ int main(int argc, char **argv)
 	print("velocity x velocity", multiply_t<dim_velocity, dim_velocity>());
 
 	// Multiply with cancellation
-	print("velocity x time    ", multiply_t<dim_velocity, dimensions<time_1>>());
+	print("velocity x time    ", multiply_t<dim_velocity, dimensions<dims::time, ratio<1>>>());
 
 	// Multiply, heterogenous
-	print("velocity x area    ", multiply_t<dim_velocity, dimensions<length_2>>());
+	print("velocity x area    ", multiply_t<dim_velocity, dimensions<dims::time, ratio<2>>>());
 
 	// Full cancellation
 	print("velocity / velocity", divide_t<dim_velocity, dim_velocity>());
 
 	// Fractional power
-	print("velocity ^ 8/3     ", pow_t<dim_velocity, std::ratio<8, 3>>());
+	print("velocity ^ 8/3     ", pow_t<dim_velocity, ratio<8, 3>>());
 
 	print("   force           ", dim_force());
-	print("   force x time    ", multiply_t<dim_force, dimensions<time_1>>());
-	print("   force x time^2  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<2>>>());
-	print("   force x time^3  ", multiply_t<dim_force, pow_t<dimensions<time_1>, std::ratio<3>>>());
-	print("   force / mass    ", divide_t  <dim_force, dimensions<mass_1>>());
+	print("   force x time    ", multiply_t<dim_force, dim_time>());
+	print("   force x time^2  ", multiply_t<dim_force, pow_t<dim_time, ratio<2>>>());
+	print("   force x time^3  ", multiply_t<dim_force, pow_t<dim_time, ratio<3>>>());
+	print("   force / mass    ", divide_t  <dim_force, dim_mass>());
 	
 
 	std::cout << std::endl << "Press enter to terminate." << std::endl;

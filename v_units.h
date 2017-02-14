@@ -3,29 +3,9 @@
 #include <type_traits>
 #include <ratio>
 
-namespace v_dimensions
-{
-	// SI units
-	struct length      { static const int DIM_ID = 100; };
-	struct mass        { static const int DIM_ID = 200; };
-	struct time        { static const int DIM_ID = 300; };
-	struct charge      { static const int DIM_ID = 400; };
-	struct temperature { static const int DIM_ID = 500; };
-	struct substance   { static const int DIM_ID = 600; };
-	struct luminance   { static const int DIM_ID = 700; };
+#include "v_dimensions.h"
 
-	// Useful nonstandard units
-	struct angle       { static const int DIM_ID = 10100; };
-	struct bits        { static const int DIM_ID = 10200; };
-
-	// User-defined types could be whatever the use-case demands.
-	//   Multiply these dimensions for 1 unit of captain_planet.
-	struct fire        { static const int DIM_ID = 1101; };
-	struct water       { static const int DIM_ID = 1102; };
-	struct earth       { static const int DIM_ID = 1103; };
-	struct wind        { static const int DIM_ID = 1104; };
-	struct heart       { static const int DIM_ID = 1105; };
-}
+#error "This header is currently unsupported"
 
 namespace v_units
 {
@@ -75,7 +55,8 @@ namespace v_units
 
 	/*
 		Variadic template for a unit type.
-			The 
+			Parameters should be a list of dimensions, EG:
+			dimensions<dimension<length, ratio<1, 1>>, dimension<time, ratio<-1, 1>>>
 	*/
 	template<class... Dimensions>
 	struct dimensions
@@ -92,38 +73,32 @@ namespace v_units
 	};
 
 
-	template<class> struct inverse_impl {};
-
-	template<class... Dimensions>
-	struct inverse_impl<dimensions<Dimensions...> >
+	namespace util
 	{
-		using type = dimensions<typename Dimensions::inverse...>;
+		/*
+			Compose dimensions by adding a base and power to the front or back of the list.
+				This does not automatically place items in order!!
+				It is used in other templates below.
+		*/
+		template<class Dim1, class Dims> struct dim_push_front {};
+		template<class DimN, class Dims> struct dim_push_back {};
 
-		//using type = dimensions<
-		//	dimension < typename Dimensions::base, std::ratio_multiply<typename Dimensions::exponent, std::ratio<-1> > >...>;
-	};
+		template<class Dim1, class... Dims>
+		struct dim_push_front<Dim1, dimensions<Dims...> > { using type = dimensions<Dim1, Dims...>; };
+		template<class DimN, class... Dims>
+		struct dim_push_back <DimN, dimensions<Dims...> > { using type = dimensions<Dims..., DimN>; };
 
-	template<class U> using inverse_t = typename inverse_impl<U>::type;
-
-
-	// Used in multiply_impl
-	template<class Dimension, class Dimensions> struct dimension_add_impl {};
-
-	template<class Dimension, class... Dimensions>
-	struct dimension_add_impl<Dimension, dimensions<Dimensions...> >
-	{
-		using prepend = dimensions<Dimension, Dimensions...>;
-		//using append  = dimensions<Dimensions..., FirstDimension>;
-	};
-
-	template<class Dimension, class Dimensions>
-	using dimension_prepend = typename dimension_add_impl<Dimension, Dimensions>::prepend;
-
-	//template<class Dimension, class Dimensions>
-	//using dimension_append = dimension_add_impl<Dimension, Dimensions>::append;
+		template<class Dim1, class Dims>
+		using dim_push_front_t = typename dim_push_front<Dim1, Dims>::type;
+		template<class DimN, class Dims>
+		using dim_push_back_t  = typename dim_push_back<DimN, Dims>::type;
+	}
 
 
-	template<class U, class Power> struct pow_impl {};
+	/*
+		Raise dimensions to a rational power (always a std::ratio)
+	*/
+	template<class Dimensions, class Power> struct pow_impl {};
 
 	template<class... Dimensions, class Power>
 	struct pow_impl<dimensions<Dimensions...>, Power>
@@ -132,8 +107,15 @@ namespace v_units
 			dimension<typename Dimensions::base, std::ratio_multiply<typename Dimensions::exponent, Power>>... >;
 	};
 
-	template<class U, class Power>
-	using pow_t = typename pow_impl<U, Power>::type;
+	template<class Dimensions, class Power>
+	using pow_t = typename pow_impl<Dimensions, Power>::type;
+
+
+	/*
+		Shorthand for inverse
+	*/
+	template<class Dimensions>
+	using inverse_t = pow_t<Dimensions, std::ratio<-1>>;
 
 
 	/*
@@ -154,26 +136,26 @@ namespace v_units
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
 		typename std::enable_if<(A1::DIM_ID < B1::DIM_ID)>::type>
 	{
-		using type = dimension_prepend<A1,
+		using type = util::dim_push_front_t<A1,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<B1, B_Rest...> >::type>;
 	};
 
 	// D: B's first dimension precedes A's
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if<(B1::DIM_ID < A1::DIM_ID)>::type>
+		typename std::enable_if<(A1::DIM_ID > B1::DIM_ID)>::type>
 	{
-		using type = dimension_prepend<B1,
+		using type = util::dim_push_front_t<B1,
 			typename multiply_impl<dimensions<A1, A_Rest...>, dimensions<B_Rest...> >::type>;
 	};
 
 	// E: A's first dimension is compatible with B's and they don't cancel out
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if<(B1::DIM_ID == A1::DIM_ID) &&
+		typename std::enable_if<(A1::DIM_ID == B1::DIM_ID) &&
 			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num != 0)>::type>
 	{
-		using type = dimension_prepend<
+		using type = util::dim_push_front_t<
 			dimension<typename A1::base, std::ratio_add<typename A1::exponent, typename B1::exponent>>,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type>;
 	};
@@ -181,7 +163,7 @@ namespace v_units
 	// E: A's first dimension is compatible with B's and they cancel out
 	template<class A1, class B1, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<A1, A_Rest...>, dimensions<B1, B_Rest...>,
-		typename std::enable_if<(B1::DIM_ID == A1::DIM_ID) &&
+		typename std::enable_if<(A1::DIM_ID == B1::DIM_ID) &&
 			(std::ratio_add<typename A1::exponent, typename B1::exponent>::num == 0)>::type>
 	{
 		using type = typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type;
