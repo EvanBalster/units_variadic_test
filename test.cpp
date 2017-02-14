@@ -2,16 +2,9 @@
 #include <iomanip>
 
 #define COMPILE_ERRORS 0
-#define PAIR_STYLE 1
 
-#if PAIR_STYLE
-	#include "vp_units.h"
-	using namespace vp_units;
-#else
-	#error "Not supported anymore"
-	#include "v_units.h"
-	using namespace v_units;
-#endif
+#include "vp_units.h"
+using namespace vp_units;
 
 namespace dims = v_dimensions;
 
@@ -21,17 +14,7 @@ using std::ratio;
 template<class Base, class Exp>
 void printDimension()
 {
-	// PRETTY PRINTING HACK, NOT RELIABLY PORTABLE
-	const char *fullName = typeid(Base).name(), *name = fullName;
-	bool prevLC = false;
-	while (*fullName != '\0')
-	{
-		if (*fullName < 'a' || *fullName > 'z') prevLC = false;
-		else if (!prevLC) {name = fullName; prevLC = true;}
-		++fullName;
-	}
-
-	std::cout << std::setw(9) << name << '^' << std::setw(2) << Exp::num;
+	std::cout << std::setw(9) << Base::name() << '^' << std::setw(2) << Exp::num;
 	if (Exp::den != 1) std::cout << '/' << Exp::den;
 	else std::cout << "  ";
 }

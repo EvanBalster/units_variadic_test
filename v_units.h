@@ -5,7 +5,7 @@
 
 #include "v_dimensions.h"
 
-#error "This header is currently unsupported"
+#error "This header is currently unsupported --- see vp_units.h"
 
 namespace v_units
 {
