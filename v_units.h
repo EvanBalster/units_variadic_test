@@ -103,7 +103,7 @@ namespace v_units
 		//	dimension < typename Dimensions::base, std::ratio_multiply<typename Dimensions::exponent, std::ratio<-1> > >...>;
 	};
 
-	template<class U> using inverse = typename inverse_impl<U>::type;
+	template<class U> using inverse_t = typename inverse_impl<U>::type;
 
 
 	// Used in multiply_impl
@@ -121,6 +121,19 @@ namespace v_units
 
 	//template<class Dimension, class Dimensions>
 	//using dimension_append = dimension_add_impl<Dimension, Dimensions>::append;
+
+
+	template<class U, class Power> struct pow_impl {};
+
+	template<class... Dimensions, class Power>
+	struct pow_impl<dimensions<Dimensions...>, Power>
+	{
+		using type = dimensions<
+			dimension<typename Dimensions::base, std::ratio_multiply<typename Dimensions::exponent, Power>>... >;
+	};
+
+	template<class U, class Power>
+	using pow_t = typename pow_impl<U, Power>::type;
 
 
 	/*
@@ -175,5 +188,8 @@ namespace v_units
 	};
 
 	template<class A, class B>
-	using multiply = typename multiply_impl<A, B>::type;
+	using multiply_t = typename multiply_impl<A, B>::type;
+
+	template<class N, class D>
+	using divide_t = typename multiply_t<N, typename inverse_t<D>>;
 }
