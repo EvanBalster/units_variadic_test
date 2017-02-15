@@ -12,10 +12,12 @@
 
 namespace vp_units
 {
+	using namespace v_dimension_traits;
+	
 	namespace checks
 	{
 		/*
-			Template to ensure a dimension list adheres to the required DIM_ID ordering.
+			Template to ensure a dimension list adheres to the required ordering.
 		*/
 		template<class... Dims>
 		struct dim_order { static const bool ok = true; };
@@ -24,7 +26,7 @@ namespace vp_units
 		struct dim_order<Base1, Exp1, Base2, Exp2, Dims...>
 		{
 			static const bool ok =
-				(Base1::DIM_ID < Base2::DIM_ID)
+				v_dimension_traits::before<Base1, Base2>::value
 				&& dim_order<Base2, Exp2, Dims...>::ok;
 		};
 
@@ -62,7 +64,7 @@ namespace vp_units
 				Dimensions must be defined in order, and must have non-zero exponents.
 		*/
 		static_assert(checks::dim_order<Dimensions...>::ok,
-			"Unit dimensions must be defined in order with respect to DIM_ID.");
+			"Unit dimensions must be defined in canonical order.");
 
 		static_assert(checks::exponents<Dimensions...>::nonzero,
 			"Unit dimensions must have non-zero exponents.");
@@ -142,7 +144,7 @@ namespace vp_units
 	// C: A's first dimension precedes B's
 	template<class ABase, class AExp, class BBase, class BExp, class... A_Rest, class... B_Rest >
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
-		typename std::enable_if<(ABase::DIM_ID < BBase::DIM_ID)>::type>
+		typename std::enable_if<v_dimension_traits::before<ABase, BBase>::value>::type>
 	{
 		using type = util::dim_push_front_t<ABase, AExp,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<BBase, BExp, B_Rest...> >::type>;
@@ -151,7 +153,7 @@ namespace vp_units
 	// D: B's first dimension precedes A's
 	template<class ABase, class AExp, class BBase, class BExp, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
-		typename std::enable_if<(ABase::DIM_ID > BBase::DIM_ID)>::type>
+		typename std::enable_if<v_dimension_traits::after<ABase, BBase>::value>::type>
 	{
 		using type = util::dim_push_front_t<BBase, BExp,
 			typename multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<B_Rest...> >::type>;
@@ -160,7 +162,8 @@ namespace vp_units
 	// E: A's first dimension is compatible with B's and they don't cancel out
 	template<class ABase, class AExp, class BBase, class BExp, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
-		typename std::enable_if<(ABase::DIM_ID == BBase::DIM_ID) && (std::ratio_add<AExp, BExp>::num != 0)>::type>
+		typename std::enable_if<v_dimension_traits::equal<ABase, BBase>::value
+			&& (std::ratio_add<AExp, BExp>::num != 0)>::type>
 	{
 		using type = util::dim_push_front_t<ABase, std::ratio_add<AExp, BExp>,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type>;
@@ -169,7 +172,8 @@ namespace vp_units
 	// E: A's first dimension is compatible with B's and they cancel out
 	template<class ABase, class AExp, class BBase, class BExp, class... A_Rest, class... B_Rest>
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
-		typename std::enable_if<(ABase::DIM_ID == BBase::DIM_ID) && (std::ratio_add<AExp, BExp>::num == 0)>::type>
+		typename std::enable_if<v_dimension_traits::equal<ABase, BBase>::value
+			&& (std::ratio_add<AExp, BExp>::num == 0)>::type>
 	{
 		using type = typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type;
 	};
@@ -182,4 +186,24 @@ namespace vp_units
 
 	template<class N, class D>
 	using divide_t = multiply_t<N, inverse_t<D>>;
+	
+	
+	/*
+		Create a well-formed dimension template by sorting parameters.
+			This is implemented using multiply.
+	*/
+	template<class... Dimensions>
+	struct make_dimension_impl {};
+	
+	template<>
+	struct make_dimension_impl<> {using type = dimensions<>;};
+	
+	template<class Base1, class Exp1, class... Dimensions>
+	struct make_dimension_impl<Base1, Exp1, Dimensions...>
+	{
+		using type = multiply_t<dimensions<Base1, Exp1>, make_dimension_impl<Dimensions...>>;
+	};
+	
+	template<class... Dimensions>
+	using make_dimension = typename make_dimension_impl<Dimensions...>::type;
 }
