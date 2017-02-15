@@ -50,6 +50,12 @@ void print(const char *label, const dimensions<Dimensions...> &dim)
 }
 
 
+#if COMPILE_ERRORS
+	// Test what happens when we declare two dimensions with the same unique key
+	struct twin_dimension_a { static const int DIM_KEY = 123456; static const char* name() {return "Twin-A";} };
+	struct twin_dimension_b { static const int DIM_KEY = 123456; static const char* name() {return "Twin-B";} };
+#endif
+
 int main(int argc, char **argv)
 {
 	// Simple dimensions
@@ -63,13 +69,19 @@ int main(int argc, char **argv)
 	
 #if COMPILE_ERRORS
 	// Invalid unit: dimensions must be ordered with respect to DIM_ID to avoid redundant types
-	print(dimensions<dims::time, ratio<-1>, dims::length, ratio<1>>());
+	print("Trouble!", dimensions<dims::time, ratio<-1>, dims::length, ratio<1>>());
 
 	// Invalid unit: time dimension has exponent 0
-	print(dimensions<dims::time, ratio<0>>());
+	print("Trouble!", dimensions<dims::time, ratio<0>>());
 	
 	// Incompatible assignment, simple case
 	dim_length m = divide_t<dim_length, dim_time>();
+	
+	using twin_a = dimensions<twin_dimension_a, ratio<1>>;
+	using twin_b = dimensions<twin_dimension_b, ratio<1>>;
+	
+	print("TWINNING...", multiply_t<twin_a, twin_b>());
+	print("TWINNING...", dimensions<twin_dimension_a, ratio<1>, twin_dimension_b, ratio<1>>());
 #endif
 
 	// Valid unit

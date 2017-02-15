@@ -32,7 +32,7 @@ namespace v_dimension_traits
 	struct equal
 	{
 		static_assert((D1::DIM_KEY == D2::DIM_KEY) == std::is_same<D1, D2>::value,
-			"Two different base dimensions have been declared with the same DIM_ID.");
+			"Two different dimensions are using the same DIM_KEY.");
 		
 		static const bool value = std::is_same<D1, D2>::value;
 	};

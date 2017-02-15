@@ -64,7 +64,7 @@ namespace vp_units
 				Dimensions must be defined in order, and must have non-zero exponents.
 		*/
 		static_assert(checks::dim_order<Dimensions...>::ok,
-			"Unit dimensions must be defined in canonical order.");
+			"Unit dimensions must be declared in ascending order.  Use make_dimension instead?");
 
 		static_assert(checks::exponents<Dimensions...>::nonzero,
 			"Unit dimensions must have non-zero exponents.");
