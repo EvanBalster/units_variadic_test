@@ -40,23 +40,12 @@ namespace v_dimension_traits
 	template<class D1, class D2>
 	struct before
 	{
-		// Integer method
 		static const bool value = D1::DIM_KEY < D2::DIM_KEY;
-		
-		// Typeid method
-		//static const bool value = typeid(D1).before(typeid(D2));
-		
-		// type_index method
-		//static const bool value = std::type_index(typeid(D1)) < std::type_index(typeid(D2));
 	};
 	
 	template<class D1, class D2>
 	struct after
 	{
-		// Integer method
 		static const bool value = D1::DIM_KEY > D2::DIM_KEY;
-		
-		// Typeid method
-		//static const bool value = typeid(D2).before(typeid(D1));
 	};
 }

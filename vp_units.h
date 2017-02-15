@@ -201,7 +201,8 @@ namespace vp_units
 	template<class Base1, class Exp1, class... Dimensions>
 	struct make_dimension_impl<Base1, Exp1, Dimensions...>
 	{
-		using type = multiply_t<dimensions<Base1, Exp1>, make_dimension_impl<Dimensions...>>;
+		using type = typename multiply_impl<dimensions<Base1, Exp1>,
+			typename make_dimension_impl<Dimensions...>::type>::type;
 	};
 	
 	template<class... Dimensions>

@@ -67,6 +67,17 @@ int main(int argc, char **argv)
 	using dim_velocity = dimensions<dims::length, ratio<1>, dims::time, ratio<-1>>;
 	using dim_force    = dimensions<dims::length, ratio<1>, dims::mass, ratio<1>, dims::time, ratio<-2>>;
 	
+	// Test make_dimension template
+	{
+		using dim_velocity_a = make_dimension<dims::length, ratio<1>, dims::time, ratio<-1>>;
+		using dim_velocity_b = make_dimension<dims::time, ratio<-1>, dims::length, ratio<1>>;
+		
+		static_assert(
+			std::is_same<dim_velocity_a, dim_velocity_b>::value &&
+			std::is_same<dim_velocity_a, dim_velocity>::value,
+			"make_dimension failed to canonicalize types.");
+	}
+	
 #if COMPILE_ERRORS
 	// Invalid unit: dimensions must be ordered with respect to DIM_ID to avoid redundant types
 	print("Trouble!", dimensions<dims::time, ratio<-1>, dims::length, ratio<1>>());
