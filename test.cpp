@@ -52,8 +52,8 @@ void print(const char *label, const dimensions<Dimensions...> &dim)
 
 #if COMPILE_ERRORS
 	// Test what happens when we declare two dimensions with the same unique key
-	struct twin_dimension_a { static const int DIM_KEY = 123456; static const char* name() {return "Twin-A";} };
-	struct twin_dimension_b { static const int DIM_KEY = 123456; static const char* name() {return "Twin-B";} };
+	struct twin_dimension_a { static const int unique_id = 123456; static const char* name() {return "Twin-A";} };
+	struct twin_dimension_b { static const int unique_id = 123456; static const char* name() {return "Twin-B";} };
 #endif
 
 int main(int argc, char **argv)
@@ -69,8 +69,8 @@ int main(int argc, char **argv)
 	
 	// Test make_dimension template
 	{
-		using dim_velocity_a = make_dimension<dims::length, ratio<1>, dims::time, ratio<-1>>;
-		using dim_velocity_b = make_dimension<dims::time, ratio<-1>, dims::length, ratio<1>>;
+		using dim_velocity_a = dimension_t<dims::length, ratio<1>, dims::time, ratio<-1>>;
+		using dim_velocity_b = dimension_t<dims::time, ratio<-1>, dims::length, ratio<1>>;
 		
 		static_assert(
 			std::is_same<dim_velocity_a, dim_velocity_b>::value &&
@@ -79,7 +79,7 @@ int main(int argc, char **argv)
 	}
 	
 #if COMPILE_ERRORS
-	// Invalid unit: dimensions must be ordered with respect to DIM_ID to avoid redundant types
+	// Invalid unit: dimensions must be ordered with respect to unique_id to avoid redundant types
 	print("Trouble!", dimensions<dims::time, ratio<-1>, dims::length, ratio<1>>());
 
 	// Invalid unit: time dimension has exponent 0

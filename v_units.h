@@ -9,6 +9,8 @@
 #error "This header is currently unsupported --- see vp_units.h"
 // ========================================================== //
 
+#if 0
+
 namespace v_units
 {
 	// This template represents a base dimension and its exponent as part of a unit's dimensionality.
@@ -177,3 +179,5 @@ namespace v_units
 	template<class N, class D>
 	using divide_t = multiply_t<N, inverse_t<D>>;
 }
+
+#endif

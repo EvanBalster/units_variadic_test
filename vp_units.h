@@ -20,34 +20,30 @@ namespace vp_units
 			Template to ensure a dimension list adheres to the required ordering.
 		*/
 		template<class... Dims>
-		struct dim_order { static const bool ok = true; };
+		struct dimensions_ordered : public std::integral_constant<bool, true> {};
 
 		template<class Base1, class Exp1, class Base2, class Exp2, class... Dims>
-		struct dim_order<Base1, Exp1, Base2, Exp2, Dims...>
-		{
-			static const bool ok =
-				v_dimension_traits::before<Base1, Base2>::value
-				&& dim_order<Base2, Exp2, Dims...>::ok;
-		};
+		struct dimensions_ordered<Base1, Exp1, Base2, Exp2, Dims...> :
+			public std::integral_constant<bool,
+				v_dimension_traits::before<Base1, Base2>::value &&
+				dimensions_ordered<Base2, Exp2, Dims...>::value> {};
 
 		/*
-			Template to ensure a dimension list contains no zero exponents.
+			Template to ensure each dimension in a dimension list is followed by a nonzero exponent.
 		*/
 		template<class... Dims>
-		struct exponents { static const bool nonzero = true; static const bool even = true; };
+		struct dimensions_valid_exponents {};
+		
+		template<>
+		struct dimensions_valid_exponents<> : public std::integral_constant<bool, true> {};
 
 		template<class Base1>
-		struct exponents<Base1>
-		{
-			static const bool even = false;
-		};
+		struct dimensions_valid_exponents<Base1> : public std::integral_constant<bool, false> {};
 
 		template<class Base1, class Exp1, class... Dims>
-		struct exponents<Base1, Exp1, Dims...>
-		{
-			static const bool nonzero = (Exp1::num != 0) && exponents<Dims...>::nonzero;
-			static const bool even = exponents<Dims...>::even;
-		};
+		struct dimensions_valid_exponents<Base1, Exp1, Dims...> :
+			public std::integral_constant<bool,
+				(Exp1::num != 0) && dimensions_valid_exponents<Dims...>::value> {};
 	}
 	
 
@@ -63,14 +59,11 @@ namespace vp_units
 			These two type checks ensure that only one valid dimensions template exists for any given dimensionality.
 				Dimensions must be defined in order, and must have non-zero exponents.
 		*/
-		static_assert(checks::dim_order<Dimensions...>::ok,
-			"Unit dimensions must be declared in ascending order.  Use make_dimension instead?");
+		static_assert(checks::dimensions_ordered<Dimensions...>::value,
+			"Unit dimensions must be declared in unique_id order.  Try dimension_t instead?");
 
-		static_assert(checks::exponents<Dimensions...>::nonzero,
-			"Unit dimensions must have non-zero exponents.");
-
-		static_assert(checks::exponents<Dimensions...>::nonzero,
-			"Unit dimensions must always be followed by a std::ratio exponent.");
+		static_assert(checks::dimensions_valid_exponents<Dimensions...>::value,
+			"Unit dimensions must be followed by non-zero exponents (std::ratio type).");
 	};
 
 
@@ -81,18 +74,20 @@ namespace vp_units
 				This does not automatically place items in order!!
 				It is used in other templates below.
 		*/
-		template<class Base1, class Exp1, class Dims> struct dim_push_front {};
-		template<class BaseN, class ExpN, class Dims> struct dim_push_back {};
+		template<class Base1, class Exp1, class Dims> struct dim_push_front_impl {};
+		template<class BaseN, class ExpN, class Dims> struct dim_push_back_impl {};
 
 		template<class Base1, class Exp1, class... Dims>
-		struct dim_push_front<Base1, Exp1, dimensions<Dims...> > { using type = dimensions<Base1, Exp1, Dims...>; };
+		struct dim_push_front_impl<Base1, Exp1, dimensions<Dims...> >
+			{ using type = dimensions<Base1, Exp1, Dims...>; };
 		template<class BaseN, class ExpN, class... Dims>
-		struct dim_push_back <BaseN, ExpN, dimensions<Dims...> > { using type = dimensions<Dims..., BaseN, ExpN>; };
+		struct dim_push_back_impl <BaseN, ExpN, dimensions<Dims...> >
+			{ using type = dimensions<Dims..., BaseN, ExpN>; };
 
 		template<class Base1, class Exp1, class Dimensions>
-		using dim_push_front_t = typename dim_push_front<Base1, Exp1, Dimensions>::type;
+		using dim_push_front = typename dim_push_front_impl<Base1, Exp1, Dimensions>::type;
 		template<class BaseN, class ExpN, class Dimensions>
-		using dim_push_back_t  = typename dim_push_back<BaseN, ExpN, Dimensions>::type;
+		using dim_push_back  = typename dim_push_back_impl<BaseN, ExpN, Dimensions>::type;
 	}
 	
 
@@ -112,7 +107,7 @@ namespace vp_units
 	struct pow_impl<dimensions<Base1, Exp1, Dims...>, Power>
 	{
 		// Recursive case
-		using type = util::dim_push_front_t<
+		using type = util::dim_push_front<
 			Base1, std::ratio_multiply<Exp1, Power>,
 			typename pow_impl<dimensions<Dims...>, Power>::type>;
 	};
@@ -146,7 +141,7 @@ namespace vp_units
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
 		typename std::enable_if<v_dimension_traits::before<ABase, BBase>::value>::type>
 	{
-		using type = util::dim_push_front_t<ABase, AExp,
+		using type = util::dim_push_front<ABase, AExp,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<BBase, BExp, B_Rest...> >::type>;
 	};
 
@@ -155,7 +150,7 @@ namespace vp_units
 	struct multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<BBase, BExp, B_Rest...>,
 		typename std::enable_if<v_dimension_traits::after<ABase, BBase>::value>::type>
 	{
-		using type = util::dim_push_front_t<BBase, BExp,
+		using type = util::dim_push_front<BBase, BExp,
 			typename multiply_impl<dimensions<ABase, AExp, A_Rest...>, dimensions<B_Rest...> >::type>;
 	};
 
@@ -165,7 +160,7 @@ namespace vp_units
 		typename std::enable_if<v_dimension_traits::equal<ABase, BBase>::value
 			&& (std::ratio_add<AExp, BExp>::num != 0)>::type>
 	{
-		using type = util::dim_push_front_t<ABase, std::ratio_add<AExp, BExp>,
+		using type = util::dim_push_front<ABase, std::ratio_add<AExp, BExp>,
 			typename multiply_impl<dimensions<A_Rest...>, dimensions<B_Rest...> >::type>;
 	};
 
@@ -206,5 +201,5 @@ namespace vp_units
 	};
 	
 	template<class... Dimensions>
-	using make_dimension = typename make_dimension_impl<Dimensions...>::type;
+	using dimension_t = typename make_dimension_impl<Dimensions...>::type;
 }
